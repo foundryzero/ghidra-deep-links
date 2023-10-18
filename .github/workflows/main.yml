@@ -1,0 +1,22 @@
+on: workflow_dispatch
+name: build
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghidra_version: ['10.4', '10.3.3', '10.3.2', '10.3.1', '10.3']
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: build
+        env: 
+          GHIDRA_VERSION: ${{ matrix.ghidra_version }}
+        run: docker compose up --exit-code-from build.service
+
+      - name: export artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-${{ matrix.ghidra_version }}
+          path: extension/dist/*.zip

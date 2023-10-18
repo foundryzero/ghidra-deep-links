@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+# Attempt to start ghidra if it's not already running
+if ! pgrep -f ghidra > /dev/null ; then
+    $GHIDRA_HOME/ghidraRun
+fi
+
+# Wait for the socket to be created and for at least one line to be written to it
+# If ghidra doesn't start or our extension isn't loaded then the socket will never be created, so we set a timeout here.
+# The timeout must be long because the socket will only have the ready signal written once a project is loaded
+# which could depend on a user inputting credentials
+timeout 5m bash -c 'while ! head -n 1 < /dev/tcp/127.0.0.1/5740 ; do sleep 0.1; done' > /dev/null
+
+# Send the url
+echo $1 > /dev/tcp/127.0.0.1/5740

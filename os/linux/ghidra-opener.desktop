@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Disas Scheme Handler for Ghidra
+Exec=INSTALL_LOCATION/push_to_socket %u
+StartupNotify=false
+Hidden=true
+MimeType=x-scheme-handler/disas;

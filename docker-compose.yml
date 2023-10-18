@@ -1,0 +1,9 @@
+services:
+    build.service:
+        build: "."
+        volumes:
+           - "./extension:/home/gradle/ghidra-deep-links"
+           - "./LICENSE:/home/gradle/ghidra-deep-links/LICENSE"
+        environment:
+           GHIDRA_VERSION: "${GHIDRA_VERSION}"
+        working_dir: "/home/gradle/ghidra-deep-links"
