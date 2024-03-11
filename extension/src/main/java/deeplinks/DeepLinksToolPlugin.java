@@ -48,6 +48,7 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
     }
 
     private void registerActions() {
+        // Copy link only action
         DockingAction copyLinkToAddressAction = new DockingAction("Copy Deep Link", getName()) {
             @Override
             public boolean isAddToPopup(ActionContext context) {
@@ -77,6 +78,42 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
         copyLinkToAddressAction.setPopupMenuData(new MenuData(new String[] { "Copy Deep Link" }));
         copyLinkToAddressAction.setEnabled(true);
         tool.addAction(copyLinkToAddressAction);
+
+        DockingAction copyMarkdownLinkToAddressAction = new DockingAction("Copy Markdown Deep Link", getName()) {
+            @Override
+            public boolean isAddToPopup(ActionContext context) {
+                // This context menu only makes sense inside a Listing or Decompiler window.
+                return (context instanceof ListingActionContext || context instanceof DecompilerActionContext);
+            }
+
+            @Override
+            public void actionPerformed(ActionContext context) {
+                if (!(context instanceof ListingActionContext || context instanceof DecompilerActionContext)) {
+                    return;
+                }
+
+                NavigatableActionContext naviContext = (NavigatableActionContext) context;
+                Program prog = naviContext.getProgram();
+                ProgramLocation loc = naviContext.getLocation();
+
+                SymbolTable symbols = prog.getSymbolTable();
+                Symbol symbol = symbols.getPrimarySymbol(loc.getAddress());
+
+                String addressText = "0x" + loc.getAddress().toString();
+                String url = buildURL(addressText, prog, symbol);
+                String linkTitle = addressText;
+                if (symbol != null) {
+                    linkTitle = symbol.getName();
+                }
+                String markdown = String.format("[`%s`](%s)", linkTitle, url);
+                copyToSystemClipboard(markdown);
+            }
+        };
+
+        // Adds the action to the right-click menu, and enables it.
+        copyMarkdownLinkToAddressAction.setPopupMenuData(new MenuData(new String[] { "Copy Markdown Deep Link" }));
+        copyMarkdownLinkToAddressAction.setEnabled(true);
+        tool.addAction(copyMarkdownLinkToAddressAction);
     }
 
     private String buildURL(String loc, Program program, Symbol symbol) {
