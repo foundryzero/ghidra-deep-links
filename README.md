@@ -29,6 +29,8 @@ When you (or somebody else) clicks on the link the referenced binary will open i
 
 > ⚠️ Currently the link handler does not distinguish between projects, and (on non-linux platforms) it cannot open Ghidra by itself. Therefore you will need to have Ghidra open and the project containing the binary referenced in the link open.
 
+You can use the "Copy Markdown Deep Link" content menu item to copy a fully formatted link, where the symbol name or address is the title of the link and the `disas://` is the target.
+
 # ⚙️ Installation
 ### Linux
 1. Download and install the latest release of the ghidra-deep-links extension from https://github.com/foundryzero/ghidra-deep-links/releases
