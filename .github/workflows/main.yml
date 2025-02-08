@@ -16,7 +16,7 @@ jobs:
         run: docker compose up --exit-code-from build.service
 
       - name: export artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.ghidra_version }}
           path: extension/dist/*.zip
