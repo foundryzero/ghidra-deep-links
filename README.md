@@ -9,6 +9,7 @@ A cross-platform plugin for Ghidra that provides deep linking support. This enab
 * Direct linking from research notes or reports to relevant binary locations.
 * Sharing an interesting section address with peers over Slack, Discord, Teams etc.
 * Including links in vulnerability write-ups or tutorials to direct readers to the exact address of an issue.
+* Creating draw.io diagrams for documenting program structure with direct links to corresponding locations.
 
 The linking mechanism will work across different project structures and with both shared and non-shared Ghidra projects.
 
@@ -34,7 +35,15 @@ When you (or somebody else) clicks on the link the referenced binary will open i
 
 You can use the *Copy Markdown Deep Link* context menu item to copy a fully formatted Markdown link, where the symbol name or address is the title of the link and the `disas://` URL is the target.
 
-# ⚙️ Installation
+### Creating draw.io objects
+
+The *Copy draw.io Deep Link* context menu item populates your clipboard with a [draw.io](https://draw.io) object. Pasting this into draw.io will add an object to your diagram, labelled with the symbol name or address of the location where you right-clicked. This object will have both the text and the object as a whole linked with the `disas://` URL to the original binary location. Here's what it will look like when pasted into your draw.io diagram:
+
+![Deep link pasted into draw.io](img/drawio-object.png)
+
+If you save your diagram as an SVG image and open it in a browser, you will now be able to click on this object and Ghidra will navigate to the original location. This makes it easy to create diagrams visually documenting the relationship between important locations in your binary, and allowing easy navigation around them.
+
+Top tip: use draw.io's [Editable SVG image](https://www.drawio.com/blog/xml-in-png) functionality to create an SVG file that you can load directly in draw.io.
 
 ## ⚙️ Installation
 

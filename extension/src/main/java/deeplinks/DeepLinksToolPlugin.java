@@ -4,6 +4,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import org.apache.commons.text.StringEscapeUtils;
 
 import docking.ActionContext;
 import docking.action.DockingAction;
@@ -167,6 +168,16 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
 
         }.addToTool(tool);
 
+        new LinkCreateAction("Copy draw.io Deep Link", getName()) {
+            private final static String template = "<mxGraphModel><root><mxCell id=\"0\"/><mxCell id=\"1\" parent=\"0\"/><UserObject label=\"&lt;a href=&quot;%s&quot;&gt;%s&lt;/a&gt;\" link=\"%s\" id=\"2\"><mxCell style=\"rounded=1;whiteSpace=wrap;html=1;\" vertex=\"1\" parent=\"1\"><mxGeometry width=\"120\" height=\"60\" as=\"geometry\"/></mxCell></UserObject></root></mxGraphModel>";
+
+            @Override
+            protected String makeClipboardString(Address address, Program prog) {
+                String url = StringEscapeUtils.escapeHtml4(buildURL(address, prog));
+                String linkTitle = StringEscapeUtils.escapeHtml4(getSymbolText(address, prog));
+                return String.format(template, url, linkTitle, url);
+            }
+        }.addToTool(tool);
 
     }
 
