@@ -18,15 +18,14 @@ import ghidra.framework.main.UtilityPluginPackage;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.framework.plugintool.util.PluginStatus;
+import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
-import ghidra.program.util.ProgramLocation;
-
 
 /**
- * A plugin that provides actions for copying disas :// deep links to the current
- * address or symbol in a code or decompiler listing.
+ * A plugin that provides actions for copying disas :// deep links to the
+ * current address or symbol in a code or decompiler listing.
  */
 //@formatter:off
 @PluginInfo(
@@ -40,106 +39,135 @@ import ghidra.program.util.ProgramLocation;
 )
 //@formatter:on
 public class DeepLinksToolPlugin extends ProgramPlugin {
+    abstract class LinkCreateAction extends DockingAction {
+        /*
+         * Encapsulation of context menu actions for copying a link to the current
+         * location to the clipboard Subclasses of this should override the
+         * makeClipboardString abstract method to specify the exact text
+         */
+
+        public LinkCreateAction(String name, String owner) {
+            /*
+             * name will be the title of this action in the context menu.
+             */
+            super(name, owner);
+        }
+
+        @Override
+        public boolean isAddToPopup(ActionContext context) {
+            // This context menu only makes sense inside a Listing or Decompiler window.
+            return (context instanceof ListingActionContext || context instanceof DecompilerActionContext);
+        }
+
+        @Override
+        public void actionPerformed(ActionContext context) {
+            /*
+             * Copy a link to the clipboard, using makeClipboardString to get the exact link
+             * text.
+             */
+            if (!(context instanceof ListingActionContext || context instanceof DecompilerActionContext)) {
+                return;
+            }
+
+            NavigatableActionContext naviContext = (NavigatableActionContext) context;
+
+            String clipboardData = makeClipboardString(naviContext.getLocation().getAddress(),
+                    naviContext.getProgram());
+            copyToSystemClipboard(clipboardData);
+        }
+
+        public void addToTool(PluginTool targetTool) {
+            /*
+             * Add this action to the context menu for the given PluginTool
+             */
+            setPopupMenuData(new MenuData(new String[] { this.getName() }));
+            setEnabled(true);
+            targetTool.addAction(this);
+        }
+
+        /*
+         * Subclasses should override this method to specify the text to copy to the
+         * clipboard when this action is performed on the given address.
+         */
+        protected abstract String makeClipboardString(Address address, Program prog);
+
+        protected String getAddressText(Address address) {
+            return "0x" + address.toString();
+        }
+
+        protected String getSymbolText(Address address, Program prog) {
+            SymbolTable symbols = prog.getSymbolTable();
+            Symbol symbol = symbols.getPrimarySymbol(address);
+            if (symbol != null) {
+                return symbol.getName();
+            }
+            return getAddressText(address);
+        }
+
+        protected String buildURL(Address address, Program prog) {
+            SymbolTable symbols = prog.getSymbolTable();
+            Symbol symbol = symbols.getPrimarySymbol(address);
+            String loc = getAddressText(address);
+            try {
+                // Don't encode slashes inside the query string
+                // This is explicitly allowed in RFC-3986
+                // see https://datatracker.ietf.org/doc/html/rfc3986#section-3.4
+                String encodedPath = URLEncoder.encode(prog.getDomainFile().getPathname(), "utf-8");
+                encodedPath = encodedPath.replace("%2F", "/");
+
+                if (symbol != null) {
+                    final String symbolName = symbol.getName(true);
+                    final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s&label=%s";
+                    return TEMPLATE.formatted(prog.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"),
+                            URLEncoder.encode(symbolName, "utf-8"));
+                } else {
+                    final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s";
+                    return TEMPLATE.formatted(prog.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"));
+                }
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+            return "";
+        }
+
+        private static void copyToSystemClipboard(String data) {
+            Clipboard systemClip = GClipboard.getSystemClipboard();
+            systemClip.setContents(new StringSelection(data), null);
+        }
+    }
 
     public DeepLinksToolPlugin(PluginTool tool) {
         super(tool);
-
         registerActions();
     }
 
     private void registerActions() {
-        // Copy link only action
-        DockingAction copyLinkToAddressAction = new DockingAction("Copy Deep Link", getName()) {
-            @Override
-            public boolean isAddToPopup(ActionContext context) {
-                // This context menu only makes sense inside a Listing or Decompiler window.
-                return (context instanceof ListingActionContext || context instanceof DecompilerActionContext);
-            }
+        /*
+         * Create and register the different type of link copying actions.
+         */
+        new LinkCreateAction("Copy Deep Link", getName()) {
+            // Just the URL
 
             @Override
-            public void actionPerformed(ActionContext context) {
-                if (!(context instanceof ListingActionContext || context instanceof DecompilerActionContext)) {
-                    return;
-                }
-
-                NavigatableActionContext naviContext = (NavigatableActionContext) context;
-                Program prog = naviContext.getProgram();
-                ProgramLocation loc = naviContext.getLocation();
-
-                SymbolTable symbols = prog.getSymbolTable();
-                Symbol symbol = symbols.getPrimarySymbol(loc.getAddress());
-
-                String url = buildURL("0x" + loc.getAddress().toString(), prog, symbol);
-                copyToSystemClipboard(url);
+            protected String makeClipboardString(Address address, Program prog) {
+                return buildURL(address, prog);
             }
-        };
 
-        // Adds the action to the right-click menu, and enables it.
-        copyLinkToAddressAction.setPopupMenuData(new MenuData(new String[] { "Copy Deep Link" }));
-        copyLinkToAddressAction.setEnabled(true);
-        tool.addAction(copyLinkToAddressAction);
+        }.addToTool(tool);
 
-        DockingAction copyMarkdownLinkToAddressAction = new DockingAction("Copy Markdown Deep Link", getName()) {
-            @Override
-            public boolean isAddToPopup(ActionContext context) {
-                // This context menu only makes sense inside a Listing or Decompiler window.
-                return (context instanceof ListingActionContext || context instanceof DecompilerActionContext);
-            }
+        new LinkCreateAction("Copy Markdown Deep Link", getName()) {
+            // Markdown formatted link
 
             @Override
-            public void actionPerformed(ActionContext context) {
-                if (!(context instanceof ListingActionContext || context instanceof DecompilerActionContext)) {
-                    return;
-                }
-
-                NavigatableActionContext naviContext = (NavigatableActionContext) context;
-                Program prog = naviContext.getProgram();
-                ProgramLocation loc = naviContext.getLocation();
-
-                SymbolTable symbols = prog.getSymbolTable();
-                Symbol symbol = symbols.getPrimarySymbol(loc.getAddress());
-
-                String addressText = "0x" + loc.getAddress().toString();
-                String url = buildURL(addressText, prog, symbol);
-                String linkTitle = addressText;
-                if (symbol != null) {
-                    linkTitle = symbol.getName();
-                }
-                String markdown = String.format("[`%s`](%s)", linkTitle, url);
-                copyToSystemClipboard(markdown);
+            protected String makeClipboardString(Address address, Program prog) {
+                String url = buildURL(address, prog);
+                String linkTitle = getSymbolText(address, prog);
+                return String.format("[`%s`](%s)", linkTitle, url);
             }
-        };
 
-        // Adds the action to the right-click menu, and enables it.
-        copyMarkdownLinkToAddressAction.setPopupMenuData(new MenuData(new String[] { "Copy Markdown Deep Link" }));
-        copyMarkdownLinkToAddressAction.setEnabled(true);
-        tool.addAction(copyMarkdownLinkToAddressAction);
+        }.addToTool(tool);
+
+
     }
 
-    private String buildURL(String loc, Program program, Symbol symbol) {
-        try {
-            // Don't encode slashes inside the query string
-            // This is explicitly allowed in RFC-3986
-            // see https://datatracker.ietf.org/doc/html/rfc3986#section-3.4
-            String encodedPath = URLEncoder.encode(program.getDomainFile().getPathname(), "utf-8");
-            encodedPath = encodedPath.replace("%2F", "/");
-
-            if (symbol != null) {
-                final String symbolName = symbol.getName(true);
-                final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s&label=%s";
-                return TEMPLATE.formatted(program.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"), URLEncoder.encode(symbolName, "utf-8"));
-            } else {
-                final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s";
-                return TEMPLATE.formatted(program.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"));
-            }
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        return "";
-    }
-
-    private void copyToSystemClipboard(String data) {
-        Clipboard systemClip = GClipboard.getSystemClipboard();
-        systemClip.setContents(new StringSelection(data), null);
-    }
 }
