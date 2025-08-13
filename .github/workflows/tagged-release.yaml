@@ -1,0 +1,94 @@
+name: Tagged Release
+run-name: "Automated Tag Release: ${{ github.ref_name }}"
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+jobs:
+  build-assets:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghidra_version: ['11.3.1', '11.3', '11.2.1', '11.2', '11.1.2', '11.1.1', '11.1', '11.0.3', '11.0.2', '11.0.1', '11.0', '10.4', '10.3.3', '10.3.2', '10.3.1', '10.3']
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: build
+        env: 
+          GHIDRA_VERSION: ${{ matrix.ghidra_version }}
+        run: docker compose run build.service python3 -u /docker_build.py
+
+      - name: export artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.ghidra_version }}
+          path: extension/dist/*.zip
+          retention-days: 1
+  
+  make-mac-middleware:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Create output directories
+        run: mkdir -p bundle/GhidraDeepLinksHandler.app/Contents/MacOS && mkdir -p bundle/GhidraDeepLinksHandler.app/Contents/Resources
+        working-directory: os/mac
+
+      - name: Copy Info.plist
+        run: cp Info.plist bundle/GhidraDeepLinksHandler.app/Contents/Info.plist
+        working-directory: os/mac
+
+      - name: Copy icon
+        run: cp ghidra-deep-links-logo.icns bundle/GhidraDeepLinksHandler.app/Contents/Resources/ghidra-deep-links-logo.icns
+        working-directory: os/mac
+
+      - name: Build x86_64
+        run: clang -target x86_64-apple-macos10.12 -framework Cocoa -lobjc *.m -o main-x86_64
+        working-directory: os/mac
+      
+      - name: Build ARM64
+        run: clang -target arm64-apple-macos11 -framework Cocoa -lobjc *.m -o main-arm64
+        working-directory: os/mac
+
+      - name: Package universal binary
+        run: lipo -create -output bundle/GhidraDeepLinksHandler.app/Contents/MacOS/main main-x86_64 main-arm64
+        working-directory: os/mac
+
+      - name: Create dmg
+        run: hdiutil create /tmp/tmp.dmg -ov -volname "DeeplinksHandlerInstall" -fs HFS+ -srcfolder os/mac/bundle
+      
+      - name: Finalise dmg
+        run: hdiutil convert /tmp/tmp.dmg -format UDZO -o GhidraDeepLinksHandler.dmg
+
+      - name: Export artifacts 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: GhidraDeepLinksHandler
+          path: GhidraDeepLinksHandler.dmg
+
+  make-release:
+    needs: [build-assets, make-mac-middleware]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: checkout-repo
+        uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./release-assets
+          pattern: "*"
+          merge-multiple: true
+
+      - name: do-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          ASSET_PATH: "./release-assets"
+        run:
+          docker compose run -v ./release-assets:/home/gradle/ghidra-deep-links/release-assets build.service python3 -u /docker_release.py

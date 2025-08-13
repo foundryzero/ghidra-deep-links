@@ -13,7 +13,7 @@ jobs:
       - name: build
         env: 
           GHIDRA_VERSION: ${{ matrix.ghidra_version }}
-        run: docker compose up --exit-code-from build.service
+        run: docker compose run build.service "python3 -u /docker_build.py"
 
       - name: export artifacts
         uses: actions/upload-artifact@v4
