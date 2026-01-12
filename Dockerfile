@@ -4,5 +4,4 @@ RUN apt-get update && apt-get install python3-pip -y && rm -rf /var/lib/apt/list
 RUN bash -c "AIOHTTP_NO_EXTENSIONS=1 pip3 install pygithub --break-system-packages"
 
 COPY docker_build.py /docker_build.py
-
-CMD [ "python3", "-u", "/docker_build.py" ]
+COPY docker_release.py /docker_release.py
