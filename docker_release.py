@@ -16,9 +16,7 @@ GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 
 g = Github(GITHUB_TOKEN)
 
-# TODO: Put this link in here is a cleaner way?
 deeplinks_repo = g.get_repo("foundryzero/ghidra-deep-links")
-
 
 try:
     new_release = deeplinks_repo.get_release(RELEASE_VERSION)
@@ -31,7 +29,7 @@ except UnknownObjectException as e:
 new_assets = []
 
 asset_folder = Path(ASSET_PATH)
-if asset_folder.is_dir:
+if asset_folder.is_dir():
     new_assets = [file for file in asset_folder.iterdir()]
 
 # Rename builts assets and add to release
