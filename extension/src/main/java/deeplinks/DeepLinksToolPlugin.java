@@ -92,43 +92,13 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
          */
         protected abstract String makeClipboardString(Address address, Program prog);
 
-        protected String getAddressText(Address address) {
-            return "0x" + address.toString();
-        }
-
         protected String getSymbolText(Address address, Program prog) {
             SymbolTable symbols = prog.getSymbolTable();
             Symbol symbol = symbols.getPrimarySymbol(address);
             if (symbol != null) {
                 return symbol.getName();
             }
-            return getAddressText(address);
-        }
-
-        protected String buildURL(Address address, Program prog) {
-            SymbolTable symbols = prog.getSymbolTable();
-            Symbol symbol = symbols.getPrimarySymbol(address);
-            String loc = getAddressText(address);
-            try {
-                // Don't encode slashes inside the query string
-                // This is explicitly allowed in RFC-3986
-                // see https://datatracker.ietf.org/doc/html/rfc3986#section-3.4
-                String encodedPath = URLEncoder.encode(prog.getDomainFile().getPathname(), "utf-8");
-                encodedPath = encodedPath.replace("%2F", "/");
-
-                if (symbol != null) {
-                    final String symbolName = symbol.getName(true);
-                    final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s&label=%s";
-                    return TEMPLATE.formatted(prog.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"),
-                            URLEncoder.encode(symbolName, "utf-8"));
-                } else {
-                    final String TEMPLATE = "disas://%s/?ghidra_path=%s&offset=%s";
-                    return TEMPLATE.formatted(prog.getExecutableMD5(), encodedPath, URLEncoder.encode(loc, "utf-8"));
-                }
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-            return "";
+            return DeepLinksUtil.getAddressText(address);
         }
 
         private static void copyToSystemClipboard(String data) {
@@ -151,7 +121,7 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
 
             @Override
             protected String makeClipboardString(Address address, Program prog) {
-                return buildURL(address, prog);
+                return DeepLinksUtil.buildURL(address, prog);
             }
 
         }.addToTool(tool);
@@ -161,7 +131,7 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
 
             @Override
             protected String makeClipboardString(Address address, Program prog) {
-                String url = buildURL(address, prog);
+                String url = DeepLinksUtil.buildURL(address, prog);
                 String linkTitle = getSymbolText(address, prog);
                 return String.format("[`%s`](%s)", linkTitle, url);
             }
@@ -173,7 +143,7 @@ public class DeepLinksToolPlugin extends ProgramPlugin {
 
             @Override
             protected String makeClipboardString(Address address, Program prog) {
-                String url = StringEscapeUtils.escapeHtml4(buildURL(address, prog));
+                String url = StringEscapeUtils.escapeHtml4(DeepLinksUtil.buildURL(address, prog));
                 String linkTitle = StringEscapeUtils.escapeHtml4(getSymbolText(address, prog));
                 return String.format(template, url, linkTitle, url);
             }
