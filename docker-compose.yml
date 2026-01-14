@@ -1,9 +1,12 @@
 services:
-    build.service:
-        build: "."
-        volumes:
-           - "./extension:/home/gradle/ghidra-deep-links"
-           - "./LICENSE:/home/gradle/ghidra-deep-links/LICENSE"
-        environment:
-           GHIDRA_VERSION: "${GHIDRA_VERSION}"
-        working_dir: "/home/gradle/ghidra-deep-links"
+   build.service:
+      build: "."
+      volumes:
+         - "./extension:/home/gradle/ghidra-deep-links"
+         - "./LICENSE:/home/gradle/ghidra-deep-links/LICENSE"
+      environment:
+         GHIDRA_VERSION: "${GHIDRA_VERSION}"
+         GITHUB_TOKEN: "${GITHUB_TOKEN}"
+         RELEASE_TAG: "${RELEASE_TAG}"
+         ASSET_PATH: "${ASSET_PATH}"
+      working_dir: "/home/gradle/ghidra-deep-links"
