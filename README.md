@@ -45,6 +45,21 @@ If you save your diagram as an SVG image and open it in a browser, you will now 
 
 Top tip: use draw.io's [Editable SVG image](https://www.drawio.com/blog/xml-in-png) functionality to create an SVG file that you can load directly in draw.io.
 
+### Python script usage
+
+Ghidra Deep Links exposes an API endpoint `DeepLinksUtil.buildURL` for programmatically creating links from Python based scripts e.g.:
+
+```
+from deeplinks import DeepLinksUtil
+
+addr = currentProgram.getSymbolTable().getGlobalSymbols("main")[0].getAddress()
+disas_url = DeepLinksUtil.buildURL(addr, currentProgram)
+
+print(disas_url)
+```
+
+This works for both PyGhidra and Jython runtimes.
+
 ## ⚙️ Installation
 
 ### Linux
